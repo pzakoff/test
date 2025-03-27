@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Calendar Copy with Menu</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    /* Menu styling */
+    #pageMenu {
+      margin-bottom: 20px;
+      padding: 10px;
+      background: #f1f1f1;
+      border: 1px solid #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    #menuItems a {
+      margin-right: 15px;
+      text-decoration: none;
+      color: #333;
+      font-weight: bold;
+    }
+    #menuItems a:hover {
+      text-decoration: underline;
+    }
+    #editMenuBtn {
+      padding: 5px 10px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    /* Calendar styling */
+    .controls { margin-bottom: 10px; }
+    .controls button { margin-right: 10px; }
+    .calendar {
+      display: grid;
+      grid-auto-rows: minmax(60px, auto);
+      border: 1px solid #ccc;
+      margin-top: 10px;
+    }
+    .calendar .cell {
+      border: 1px solid #ccc;
+      padding: 4px;
+      font-size: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+    .room-label { font-weight: bold; background-color: #f9f9f9; }
+    .date-label { font-weight: bold; background-color: #e9e9e9; text-align: center; }
+    .reservations { font-size: 10px; margin-top: 4px; }
+    .reservation-wrapper { display: inline-block; }
+    .reservation-box {
+      border-radius: 4px;
+      padding: 2px 4px;
+      margin-top: 2px;
+      color: #000;
+      cursor: pointer;
+    }
+    .additional-marker {
+      color: red;
+      font-weight: bold;
+      display: block;
+      text-align: center;
+      margin-top: 2px;
+    }
+    #addBtn, #manageRoomsBtn, #guestInfoBtn { margin-bottom: 10px; }
+    .modal, .rooms-modal {
+      display: none;
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border: 1px solid #ccc;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      z-index: 10;
+    }
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 5;
+    }
+    .custom-tooltip {
+      position: absolute;
+      background: #333;
+      color: #fff;
+      padding: 6px;
+      border-radius: 4px;
+      white-space: pre;
+      display: none;
+      z-index: 100;
+      font-size: 12px;
+    }
+    .rooms-list-item { margin-bottom: 10px; }
+    .rooms-list-item input { width: 150px; }
+    .rooms-list-item button { margin-left: 5px; }
+    .guest-fields {
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      padding: 8px;
+      border-radius: 4px;
+      background: #fafafa;
+    }
+    .guest-fields h4 { margin-top: 0; }
+    /* Menu Edit Modal */
+    #menuEditModal { width: 400px; }
+    #menuEditContainer div { margin-bottom: 10px; }
+    #menuEditContainer input {
+      width: 40%;
+      margin-right: 5%;
+    }
+    #menuEditContainer button { padding: 2px 6px; }
+  </style>
+</head>
+<body>
+  <!-- Menu Bar -->
+  <div id="pageMenu">
+    <div id="menuItems"></div>
+    <button id="editMenuBtn">Edit</button>
+  </div>
+
+  <h2>Hotel Room Calendar (Calendar Copy)</h2>
+  <div class="controls">
+    <button id="guestInfoBtn">Guest Info</button>
+    <select id="month"></select>
+    <select id="year"></select>
+    <button id="manageRoomsBtn">Manage Rooms</button>
+  </div>
+  <button id="addBtn">+ Add Reservation</button>
+  <div class="calendar" id="calendar"></div>
+  <div class="overlay" id="overlay"></div>
+
+  <!-- Reservation Modal -->
+  <div class="modal" id="reservationModal">
+    <h3 id="reservationModalTitle">Add Reservation</h3>
+    <label>Name: <input type="text" id="resName"></label><br><br>
+    <label>Room: <select id="resRoom"></select></label><br><br>
+    <label>Dates: <input type="text" id="resDates"></label><br><br>
+    <label>Price: <input type="number" id="resPrice"></label><br><br>
+    <label>Color: <input type="color" id="resColor" value="#aed7f4"></label><br><br>
+    <label>Number of Guests: <input type="number" id="resGuestNumber"></label><br><br>
+    <div id="guestFieldsContainer"></div>
+    <label>Phone Number: <input type="tel" id="resPhone"></label><br><br>
+    <label>Email Address: <input type="email" id="resEmail"></label><br><br>
+    <label>Source of Reservation:
+      <select id="resSource">
+        <option value="Booking">Booking</option>
+        <option value="AirBNB">AirBNB</option>
+        <option value="Personal">Personal</option>
+      </select>
+    </label><br><br>
+    <label>Additional Information: <textarea id="resAdditional"></textarea></label><br><br>
+    <button id="saveRes">Save</button>
+    <button id="cancelBtn">Cancel</button>
+  </div>
+
+  <!-- Rooms Management Modal -->
+  <div class="rooms-modal" id="roomsModal">
+    <h3>Manage Rooms</h3>
+    <div id="roomsList"></div>
+    <button id="addRoomBtn">Add Room</button><br><br>
+    <button id="saveRoomsBtn">Save Changes</button>
+    <button id="cancelRoomsBtn">Cancel</button>
+  </div>
+
+  <!-- Menu Edit Modal -->
+  <div class="modal" id="menuEditModal">
+    <h3>Edit Calendar Pages</h3>
+    <div id="menuEditContainer"></div>
+    <button id="addMenuItemBtn">Add New Page</button>
+    <br><br>
+    <button id="saveMenuChangesBtn">Save Changes</button>
+    <button id="cancelMenuChangesBtn">Cancel</button>
+  </div>
+
+  <div class="custom-tooltip" id="tooltip"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script>
+    (function() {
+      // ------------------------------
+      // Menu Setup
+      // ------------------------------
+      const defaultPages = [
+        { name: "Main Calendar", url: "Booking.html" },
+        { name: "Calendar Copy Page", url: "CalendarCopy.html" }
+      ];
+      let calendarPages = JSON.parse(localStorage.getItem("calendarPages")) || defaultPages;
+      const menuItemsContainer = document.getElementById("menuItems");
+      const editMenuBtn = document.getElementById("editMenuBtn");
+      const menuEditModal = document.getElementById("menuEditModal");
+      const menuEditContainer = document.getElementById("menuEditContainer");
+      const addMenuItemBtn = document.getElementById("addMenuItemBtn");
+      const saveMenuChangesBtn = document.getElementById("saveMenuChangesBtn");
+      const cancelMenuChangesBtn = document.getElementById("cancelMenuChangesBtn");
+      const overlay = document.getElementById("overlay");
+
+      function renderMenu() {
+        menuItemsContainer.innerHTML = "";
+        calendarPages.forEach(page => {
+          const link = document.createElement("a");
+          link.textContent = page.name;
+          link.href = page.url;
+          menuItemsContainer.appendChild(link);
+        });
+      }
+      renderMenu();
+
+      function openMenuEditModal() {
+        menuEditContainer.innerHTML = "";
+        calendarPages.forEach((page, index) => {
+          const row = document.createElement("div");
+
+          const nameInput = document.createElement("input");
+          nameInput.type = "text";
+          nameInput.value = page.name;
+          nameInput.placeholder = "Page Name";
+          nameInput.dataset.index = index;
+
+          const urlInput = document.createElement("input");
+          urlInput.type = "text";
+          urlInput.value = page.url;
+          urlInput.placeholder = "Page URL";
+          urlInput.dataset.index = index;
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.textContent = "Delete";
+          deleteBtn.addEventListener("click", () => {
+            calendarPages.splice(index, 1);
+            openMenuEditModal();
+          });
+
+          row.appendChild(nameInput);
+          row.appendChild(urlInput);
+          row.appendChild(deleteBtn);
+          menuEditContainer.appendChild(row);
+        });
+        menuEditModal.style.display = "block";
+        overlay.style.display = "block";
+      }
+      editMenuBtn.addEventListener("click", openMenuEditModal);
+
+      addMenuItemBtn.addEventListener("click", () => {
+        const row = document.createElement("div");
+        const nameInput = document.createElement("input");
+        nameInput.type = "text";
+        nameInput.placeholder = "Page Name";
+
+        const urlInput = document.createElement("input");
+        urlInput.type = "text";
+        urlInput.placeholder = "Page URL";
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "Delete";
+        deleteBtn.addEventListener("click", () => {
+          row.remove();
+        });
+
+        row.appendChild(nameInput);
+        row.appendChild(urlInput);
+        row.appendChild(deleteBtn);
+        menuEditContainer.appendChild(row);
+      });
+
+      saveMenuChangesBtn.addEventListener("click", () => {
+        const rows = menuEditContainer.querySelectorAll("div");
+        const newPages = [];
+        rows.forEach(row => {
+          const inputs = row.querySelectorAll("input");
+          if (inputs.length === 2) {
+            const name = inputs[0].value.trim();
+            const url = inputs[1].value.trim();
+            if (name && url) {
+              newPages.push({ name, url });
+            }
+          }
+        });
+        if (newPages.length > 0) {
+          calendarPages = newPages;
+          localStorage.setItem("calendarPages", JSON.stringify(calendarPages));
+          renderMenu();
+          menuEditModal.style.display = "none";
+          overlay.style.display = "none";
+        } else {
+          alert("Please provide at least one valid page.");
+        }
+      });
+
+      cancelMenuChangesBtn.addEventListener("click", () => {
+        menuEditModal.style.display = "none";
+        overlay.style.display = "none";
+      });
+
+      // ------------------------------
+      // Rooms & Reservations for Calendar Copy
+      // ------------------------------
+      let rooms = JSON.parse(localStorage.getItem("roomsCalendarCopy")) || [];
+      if (!rooms || rooms.length === 0) {
+        let roomIdCounter = 1;
+        for (let i = 0; i < 15; i++) {
+          rooms.push({ id: roomIdCounter++, name: "Room " + (i+1) });
+        }
+        localStorage.setItem("roomsCalendarCopy", JSON.stringify(rooms));
+      }
+
+      let reservations = JSON.parse(localStorage.getItem("reservationsCalendarCopy")) || [];
+
+      let editingReservationIndex = null;
+      let currentMonth, currentYear;
+      let flatpickrInstance;
+      let reservationIdCounter = reservations.length > 0
+        ? Math.max(...reservations.map(r => r.id)) + 1
+        : 1;
+
+      // ------------------------------
+      // DOM Elements
+      // ------------------------------
+      const calendarEl = document.getElementById("calendar");
+      const monthSelect = document.getElementById("month");
+      const yearSelect = document.getElementById("year");
+      const modal = document.getElementById("reservationModal");
+      const resDates = document.getElementById("resDates");
+      const resRoom = document.getElementById("resRoom");
+      const cancelBtn = document.getElementById("cancelBtn");
+      const tooltip = document.getElementById("tooltip");
+
+      const resName = document.getElementById("resName");
+      const resPrice = document.getElementById("resPrice");
+      const resColor = document.getElementById("resColor");
+      const resPhone = document.getElementById("resPhone");
+      const resEmail = document.getElementById("resEmail");
+      const resSource = document.getElementById("resSource");
+      const resAdditional = document.getElementById("resAdditional");
+      const reservationModalTitle = document.getElementById("reservationModalTitle");
+
+      const resGuestNumber = document.getElementById("resGuestNumber");
+      const guestFieldsContainer = document.getElementById("guestFieldsContainer");
+
+      const addBtn = document.getElementById("addBtn");
+      const manageRoomsBtn = document.getElementById("manageRoomsBtn");
+      const guestInfoBtn = document.getElementById("guestInfoBtn");
+
+      const roomsModal = document.getElementById("roomsModal");
+      const roomsList = document.getElementById("roomsList");
+      const addRoomBtn = document.getElementById("addRoomBtn");
+      const saveRoomsBtn = document.getElementById("saveRoomsBtn");
+      const cancelRoomsBtn = document.getElementById("cancelRoomsBtn");
+
+      const now = new Date();
+      currentMonth = now.getMonth();
+      currentYear = now.getFullYear();
+
+      const colorPalette = ["#aed7f4", "#c1f0c1", "#f4d7ae", "#f4aec1", "#aec1f4"];
+
+      // ------------------------------
+      // Populate Month/Year Selectors
+      // ------------------------------
+      function populateSelectors() {
+        monthSelect.innerHTML = "";
+        for (let m = 0; m < 12; m++) {
+          const opt = document.createElement("option");
+          opt.value = m;
+          opt.textContent = new Date(0, m).toLocaleString("default", { month: "long" });
+          if (m === currentMonth) opt.selected = true;
+          monthSelect.appendChild(opt);
+        }
+        yearSelect.innerHTML = "";
+        for (let y = currentYear - 5; y <= currentYear + 5; y++) {
+          const opt = document.createElement("option");
+          opt.value = y;
+          opt.textContent = y;
+          if (y === currentYear) opt.selected = true;
+          yearSelect.appendChild(opt);
+        }
+        // Rooms in the modal
+        resRoom.innerHTML = "";
+        rooms.forEach((room) => {
+          const opt = document.createElement("option");
+          opt.value = room.id;
+          opt.textContent = room.name;
+          resRoom.appendChild(opt);
+        });
+      }
+
+      // ------------------------------
+      // Render Calendar
+      // ------------------------------
+      function renderCalendar() {
+        calendarEl.innerHTML = "";
+        const lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
+        calendarEl.style.gridTemplateColumns = `150px repeat(${lastDate}, 1fr)`;
+
+        // Header
+        calendarEl.appendChild(createCell("Room / Date", "cell date-label"));
+        for (let d = 1; d <= lastDate; d++) {
+          const label = `${String(d).padStart(2, "0")}.${String(currentMonth + 1).padStart(2, "0")}`;
+          calendarEl.appendChild(createCell(label, "cell date-label"));
+        }
+
+        // Rooms
+        rooms.forEach((room) => {
+          calendarEl.appendChild(createCell(room.name, "cell room-label"));
+          for (let d = 1; d <= lastDate; d++) {
+            const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+            const cell = document.createElement("div");
+            cell.className = "cell";
+            cell.id = `res-${room.id}-${dateStr}`;
+
+            const resContainer = document.createElement("div");
+            resContainer.className = "reservations";
+            cell.appendChild(resContainer);
+
+            calendarEl.appendChild(cell);
+          }
+        });
+
+        updateReservationsDisplay();
+      }
+      function createCell(content, className = "") {
+        const div = document.createElement("div");
+        div.className = className;
+        div.textContent = content;
+        return div;
+      }
+
+      // ------------------------------
+      // Update Reservations Display
+      // ------------------------------
+      function updateReservationsDisplay() {
+        document.querySelectorAll(".reservations").forEach((el) => (el.innerHTML = ""));
+
+        reservations.forEach((r, index) => {
+          const startDate = new Date(r.dates[0]);
+          const finalDate = new Date(r.dates[1]);
+          let current = new Date(startDate);
+
+          while (current <= finalDate) {
+            const dateStr = current.toISOString().split("T")[0];
+            const cellId = `res-${r.room}-${dateStr}`;
+            const cell = document.getElementById(cellId);
+            if (cell) {
+              const resContainer = cell.querySelector(".reservations");
+              if (resContainer) {
+                const wrapper = document.createElement("div");
+                wrapper.className = "reservation-wrapper";
+
+                const resBox = document.createElement("div");
+                resBox.className = "reservation-box";
+                resBox.textContent = `${r.name} ($${r.price})`;
+                resBox.style.backgroundColor = r.color;
+                resBox.style.width = (current.getTime() === finalDate.getTime()) ? "50%" : "100%";
+
+                const tooltipContent = 
+                  `Name: ${r.name}
+Room: ${getRoomNameById(r.room)}
+Dates: ${r.dates.join(" to ")}
+Price: $${r.price}
+Phone: ${r.phone}
+Email: ${r.email}
+Source: ${r.source}${r.additional ? "\nAdditional: " + r.additional : ""}`;
+
+                resBox.title = tooltipContent;
+                resBox.addEventListener("click", () => openEditModal(index));
+                resBox.addEventListener("mouseover", (e) => {
+                  tooltip.textContent = tooltipContent;
+                  tooltip.style.left = e.pageX + "px";
+                  tooltip.style.top = e.pageY + "px";
+                  tooltip.style.display = "block";
+                });
+                resBox.addEventListener("mouseout", () => {
+                  tooltip.style.display = "none";
+                });
+
+                wrapper.appendChild(resBox);
+
+                // "!" if additional info
+                if (r.additional) {
+                  const additionalMarker = document.createElement("div");
+                  additionalMarker.className = "additional-marker";
+                  additionalMarker.textContent = "!";
+                  wrapper.appendChild(additionalMarker);
+                }
+
+                resContainer.appendChild(wrapper);
+              }
+            }
+            current.setDate(current.getDate() + 1);
+          }
+        });
+      }
+
+      function getRoomNameById(roomId) {
+        const room = rooms.find((r) => r.id == roomId);
+        return room ? room.name : "Unknown";
+      }
+
+      // ------------------------------
+      // Reservation Modal
+      // ------------------------------
+      function openModal() {
+        editingReservationIndex = null;
+        reservationModalTitle.textContent = "Add Reservation";
+        resName.value = "";
+        resDates.value = "";
+        resPrice.value = "";
+        resColor.value = colorPalette[Math.floor(Math.random() * colorPalette.length)];
+        resPhone.value = "";
+        resEmail.value = "";
+        resSource.value = "Booking";
+        resAdditional.value = "";
+        resRoom.value = rooms.length ? rooms[0].id : "";
+        resGuestNumber.value = "";
+        guestFieldsContainer.innerHTML = "";
+        initFlatpickr([], "");
+
+        modal.style.display = "block";
+        overlay.style.display = "block";
+      }
+
+      function openEditModal(index) {
+        editingReservationIndex = index;
+        const r = reservations[index];
+        reservationModalTitle.textContent = "Edit Reservation";
+        resName.value = r.name;
+        resDates.value = r.dates.join(" to ");
+        resPrice.value = r.price;
+        resColor.value = r.color;
+        resPhone.value = r.phone || "";
+        resEmail.value = r.email || "";
+        resSource.value = r.source || "Booking";
+        resAdditional.value = r.additional || "";
+        resRoom.value = r.room;
+
+        const guestCount = r.guests ? r.guests.length : 0;
+        resGuestNumber.value = guestCount;
+        createGuestFields(guestCount);
+        if (r.guests) {
+          r.guests.forEach((guest, i) => {
+            document.getElementById(`guest${i+1}First`).value = guest.firstName || "";
+            document.getElementById(`guest${i+1}Last`).value = guest.lastName || "";
+            document.getElementById(`guest${i+1}Personal`).value = guest.personalNum || "";
+          });
+        }
+        initFlatpickr(getDisabledDatesForRoom(r.room), resDates.value);
+
+        modal.style.display = "block";
+        overlay.style.display = "block";
+      }
+
+      function closeModal() {
+        modal.style.display = "none";
+        overlay.style.display = "none";
+      }
+      cancelBtn.addEventListener("click", closeModal);
+
+      // ------------------------------
+      // Dynamic Guest Fields
+      // ------------------------------
+      resGuestNumber.addEventListener("change", (e) => {
+        const count = parseInt(e.target.value) || 0;
+        createGuestFields(count);
+      });
+
+      function createGuestFields(count) {
+        guestFieldsContainer.innerHTML = "";
+        for (let i = 1; i <= count; i++) {
+          const div = document.createElement("div");
+          div.className = "guest-fields";
+          div.innerHTML = `
+            <h4>Guest #${i}</h4>
+            <label>First Name: <input type="text" id="guest${i}First"></label><br>
+            <label>Last Name: <input type="text" id="guest${i}Last"></label><br>
+            <label>Personal Number: <input type="text" id="guest${i}Personal"></label><br>
+          `;
+          guestFieldsContainer.appendChild(div);
+        }
+      }
+
+      // ------------------------------
+      // Flatpickr Init
+      // ------------------------------
+      function initFlatpickr(disabledDates = [], initialValue = "") {
+        if (flatpickrInstance) flatpickrInstance.destroy();
+        flatpickrInstance = flatpickr(resDates, {
+          mode: "range",
+          dateFormat: "Y-m-d",
+          disable: disabledDates,
+          defaultDate: initialValue,
+        });
+      }
+
+      function getDisabledDatesForRoom(roomId) {
+        const disabled = new Set();
+        reservations.forEach((r) => {
+          if (parseInt(r.room) === parseInt(roomId)) {
+            let current = new Date(r.dates[0]);
+            const end = new Date(r.dates[1]);
+            end.setDate(end.getDate() - 1);
+            while (current <= end) {
+              disabled.add(current.toISOString().split("T")[0]);
+              current.setDate(current.getDate() + 1);
+            }
+          }
+        });
+        return Array.from(disabled);
+      }
+
+      // ------------------------------
+      // Validate & Save Reservation
+      // ------------------------------
+      function validateReservation(newRes, editingIndex) {
+        const newStart = new Date(newRes.dates[0]);
+        const newEnd = new Date(newRes.dates[1]);
+        if (newEnd < newStart) {
+          alert("End date must be after start date.");
+          return false;
+        }
+        // Overlap check
+        for (let i = 0; i < reservations.length; i++) {
+          if (editingIndex !== null && i === editingIndex) continue;
+          const r = reservations[i];
+          if (r.room == newRes.room) {
+            const existingStart = new Date(r.dates[0]);
+            const existingEnd = new Date(r.dates[1]);
+            if (newStart < existingEnd && newEnd > existingStart) {
+              if (!(newStart.getTime() === existingEnd.getTime() ||
+                    newEnd.getTime() === existingStart.getTime())) {
+                alert("Reservations cannot overlap except when one ends exactly when another begins.");
+                return false;
+              }
+            }
+          }
+        }
+        return true;
+      }
+
+      document.getElementById("saveRes").addEventListener("click", () => {
+        const name = resName.value.trim();
+        const datesStr = resDates.value.trim();
+        const dates = datesStr.split(" to ");
+        const price = resPrice.value.trim();
+        const room = resRoom.value;
+        const color = resColor.value;
+        const phone = resPhone.value.trim();
+        const email = resEmail.value.trim();
+        const source = resSource.value;
+        const additional = resAdditional.value.trim();
+
+        if (!name || dates.length !== 2 || !price || !room) {
+          alert("Please fill in the main reservation fields correctly.");
+          return;
+        }
+
+        // Gather guest data
+        const guestCount = parseInt(resGuestNumber.value) || 0;
+        const guestsArray = [];
+        let atLeastOneComplete = false;
+        for (let i = 1; i <= guestCount; i++) {
+          const firstName = document.getElementById(`guest${i}First`).value.trim();
+          const lastName = document.getElementById(`guest${i}Last`).value.trim();
+          const personalNum = document.getElementById(`guest${i}Personal`).value.trim();
+          guestsArray.push({ firstName, lastName, personalNum });
+          if (firstName && lastName && personalNum) {
+            atLeastOneComplete = true;
+          }
+        }
+        if (guestCount > 0 && !atLeastOneComplete) {
+          alert("At least one guest must have First Name, Last Name, and Personal Number.");
+          return;
+        }
+
+        const newReservation = {
+          id: reservationIdCounter,
+          name,
+          dates,
+          price,
+          room,
+          color,
+          phone,
+          email,
+          source,
+          additional,
+          guests: guestsArray
+        };
+
+        if (!validateReservation(newReservation, editingReservationIndex)) {
+          return;
+        }
+
+        if (editingReservationIndex !== null) {
+          reservations[editingReservationIndex] = {
+            ...reservations[editingReservationIndex],
+            ...newReservation
+          };
+        } else {
+          reservations.push({
+            ...newReservation,
+            id: reservationIdCounter++
+          });
+        }
+
+        // Save to localStorage
+        localStorage.setItem("reservationsCalendarCopy", JSON.stringify(reservations));
+
+        closeModal();
+        renderCalendar();
+      });
+
+      // ------------------------------
+      // Manage Rooms
+      // ------------------------------
+      function openRoomsModal() {
+        roomsList.innerHTML = "";
+        rooms.forEach((room, index) => {
+          const div = document.createElement("div");
+          div.className = "rooms-list-item";
+
+          const input = document.createElement("input");
+          input.type = "text";
+          input.value = room.name;
+          input.dataset.roomId = room.id;
+          div.appendChild(input);
+
+          // Up
+          const upBtn = document.createElement("button");
+          upBtn.textContent = "Up";
+          upBtn.addEventListener("click", () => {
+            if (index > 0) {
+              [rooms[index - 1], rooms[index]] = [rooms[index], rooms[index - 1]];
+              openRoomsModal();
+            }
+          });
+          div.appendChild(upBtn);
+
+          // Down
+          const downBtn = document.createElement("button");
+          downBtn.textContent = "Down";
+          downBtn.addEventListener("click", () => {
+            if (index < rooms.length - 1) {
+              [rooms[index + 1], rooms[index]] = [rooms[index], rooms[index + 1]];
+              openRoomsModal();
+            }
+          });
+          div.appendChild(downBtn);
+
+          // Delete
+          const delBtn = document.createElement("button");
+          delBtn.textContent = "Delete";
+          delBtn.addEventListener("click", () => {
+            if (confirm("Delete this room?")) {
+              const removed = rooms.splice(index, 1);
+              reservations = reservations.filter(r => r.room != removed[0].id);
+              openRoomsModal();
+              renderCalendar();
+            }
+          });
+          div.appendChild(delBtn);
+
+          roomsList.appendChild(div);
+        });
+        roomsModal.style.display = "block";
+        overlay.style.display = "block";
+      }
+
+      manageRoomsBtn.addEventListener("click", openRoomsModal);
+
+      addRoomBtn.addEventListener("click", () => {
+        const newRoomName = prompt("Enter new room name:", "New Room");
+        if (newRoomName) {
+          const maxId = rooms.length > 0 ? Math.max(...rooms.map(r => r.id)) : 0;
+          const newId = maxId + 1;
+          rooms.push({ id: newId, name: newRoomName });
+          openRoomsModal();
+        }
+      });
+
+      saveRoomsBtn.addEventListener("click", () => {
+        const inputs = roomsList.querySelectorAll("input");
+        inputs.forEach((input) => {
+          const room = rooms.find(r => r.id == input.dataset.roomId);
+          if (room) {
+            room.name = input.value;
+          }
+        });
+        // Save updated rooms & reservations
+        localStorage.setItem("roomsCalendarCopy", JSON.stringify(rooms));
+        localStorage.setItem("reservationsCalendarCopy", JSON.stringify(reservations));
+
+        roomsModal.style.display = "none";
+        overlay.style.display = "none";
+        populateSelectors();
+        renderCalendar();
+      });
+
+      cancelRoomsBtn.addEventListener("click", () => {
+        roomsModal.style.display = "none";
+        overlay.style.display = "none";
+      });
+
+      overlay.addEventListener("click", () => {
+        closeModal();
+        roomsModal.style.display = "none";
+        menuEditModal.style.display = "none";
+        overlay.style.display = "none";
+      });
+
+      // ------------------------------
+      // Guest Info Copy
+      // ------------------------------
+      guestInfoBtn.addEventListener("click", () => {
+        localStorage.setItem("reservationsCalendarCopy", JSON.stringify(reservations));
+        window.location.href = "GuestInfoCopy.html";
+      });
+
+      // ------------------------------
+      // Month/Year Changes
+      // ------------------------------
+      monthSelect.onchange = () => {
+        currentMonth = parseInt(monthSelect.value);
+        renderCalendar();
+      };
+      yearSelect.onchange = () => {
+        currentYear = parseInt(yearSelect.value);
+        renderCalendar();
+      };
+
+      // ------------------------------
+      // Initialize
+      // ------------------------------
+      populateSelectors();
+      renderCalendar();
+      addBtn.addEventListener("click", openModal);
+      console.log("Calendar Copy with Menu initialization complete.");
+    })();
+  </script>
+</body>
+</html>

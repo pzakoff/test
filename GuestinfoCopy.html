@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guest Info - Calendar Copy</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    h2 {
+      text-align: center;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #e9e9e9;
+    }
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    #backBtn {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Guest Information - Calendar Copy Reservations</h2>
+  <table id="guestTable">
+    <thead>
+      <tr>
+        <th>Reservation Dates</th>
+        <th>Name</th>
+        <th>Phone Number</th>
+        <th>Email Address</th>
+        <th>Room</th>
+        <th>Price</th>
+        <th>Number of Guests</th>
+        <th>Source</th>
+        <th>Additional Information</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Rows will be added dynamically -->
+    </tbody>
+  </table>
+  <button id="backBtn">Back to Calendar Copy</button>
+
+  <script>
+    (function() {
+      // Retrieve reservations for Calendar Copy from localStorage
+      const reservations = JSON.parse(localStorage.getItem("reservationsCalendarCopy")) || [];
+      const tbody = document.querySelector("#guestTable tbody");
+      
+      reservations.forEach(res => {
+        const tr = document.createElement("tr");
+        
+        const datesTd = document.createElement("td");
+        datesTd.textContent = res.dates.join(" to ");
+        tr.appendChild(datesTd);
+        
+        const nameTd = document.createElement("td");
+        nameTd.textContent = res.name;
+        tr.appendChild(nameTd);
+        
+        const phoneTd = document.createElement("td");
+        phoneTd.textContent = res.phone;
+        tr.appendChild(phoneTd);
+        
+        const emailTd = document.createElement("td");
+        emailTd.textContent = res.email;
+        tr.appendChild(emailTd);
+        
+        const roomTd = document.createElement("td");
+        roomTd.textContent = res.room;
+        tr.appendChild(roomTd);
+        
+        const priceTd = document.createElement("td");
+        priceTd.textContent = res.price;
+        tr.appendChild(priceTd);
+        
+        const guestsTd = document.createElement("td");
+        guestsTd.textContent = res.guests && res.guests.length ? res.guests.length : 0;
+        tr.appendChild(guestsTd);
+        
+        const sourceTd = document.createElement("td");
+        sourceTd.textContent = res.source;
+        tr.appendChild(sourceTd);
+        
+        const additionalTd = document.createElement("td");
+        additionalTd.textContent = res.additional;
+        tr.appendChild(additionalTd);
+
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById("backBtn").addEventListener("click", () => {
+        window.location.href = "CalendarCopy.html";
+      });
+    })();
+  </script>
+</body>
+</html>
