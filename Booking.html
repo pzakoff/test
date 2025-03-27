@@ -22,15 +22,8 @@
       position: relative;
       overflow: hidden;
     }
-    .room-label {
-      font-weight: bold;
-      background-color: #f9f9f9;
-    }
-    .date-label {
-      font-weight: bold;
-      background-color: #e9e9e9;
-      text-align: center;
-    }
+    .room-label { font-weight: bold; background-color: #f9f9f9; }
+    .date-label { font-weight: bold; background-color: #e9e9e9; text-align: center; }
     .reservations { font-size: 10px; margin-top: 4px; }
     .reservation-wrapper { display: inline-block; }
     .reservation-box {
@@ -141,43 +134,37 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script>
     (function() {
-      // ------------------------------
-      // Load or Initialize Rooms
-      // ------------------------------
-      let rooms = JSON.parse(localStorage.getItem("rooms")) || [];
-      if (!rooms || rooms.length === 0) {
-        // Create default 15 rooms if none in localStorage
+      // --- Persistent Data for Rooms ---
+      let rooms;
+      // Only initialize default rooms if no key exists at all
+      if (localStorage.getItem("rooms") === null) {
+        rooms = [];
         let roomIdCounter = 1;
         for (let i = 0; i < 15; i++) {
           rooms.push({ id: roomIdCounter++, name: "Room " + (i+1) });
         }
         localStorage.setItem("rooms", JSON.stringify(rooms));
+        console.log("Default rooms created:", rooms);
+      } else {
+        rooms = JSON.parse(localStorage.getItem("rooms"));
+        console.log("Loaded rooms from storage:", rooms);
       }
 
-      // ------------------------------
-      // Load or Initialize Reservations
-      // ------------------------------
+      // --- Persistent Data for Reservations ---
       let reservations = JSON.parse(localStorage.getItem("reservations")) || [];
-
-      // ------------------------------
-      // Basic Setup
-      // ------------------------------
-      let editingReservationIndex = null;
-      let currentMonth, currentYear;
-      let flatpickrInstance;
       let reservationIdCounter = reservations.length > 0
         ? Math.max(...reservations.map(r => r.id)) + 1
         : 1;
 
+      let editingReservationIndex = null;
+      let currentMonth, currentYear;
+      let flatpickrInstance;
       const now = new Date();
       currentMonth = now.getMonth();
       currentYear = now.getFullYear();
-
       const colorPalette = ["#aed7f4", "#c1f0c1", "#f4d7ae", "#f4aec1", "#aec1f4"];
 
-      // ------------------------------
-      // DOM Elements
-      // ------------------------------
+      // --- DOM Elements ---
       const calendarEl = document.getElementById("calendar");
       const monthSelect = document.getElementById("month");
       const yearSelect = document.getElementById("year");
@@ -210,11 +197,8 @@
       const saveRoomsBtn = document.getElementById("saveRoomsBtn");
       const cancelRoomsBtn = document.getElementById("cancelRoomsBtn");
 
-      // ------------------------------
-      // Populate Month/Year Selectors and Room Selector
-      // ------------------------------
+      // --- Populate Month/Year Selectors and Room Selector ---
       function populateSelectors() {
-        // Month
         monthSelect.innerHTML = "";
         for (let m = 0; m < 12; m++) {
           const opt = document.createElement("option");
@@ -223,7 +207,6 @@
           if (m === currentMonth) opt.selected = true;
           monthSelect.appendChild(opt);
         }
-        // Year
         yearSelect.innerHTML = "";
         for (let y = currentYear - 5; y <= currentYear + 5; y++) {
           const opt = document.createElement("option");
@@ -232,7 +215,7 @@
           if (y === currentYear) opt.selected = true;
           yearSelect.appendChild(opt);
         }
-        // Rooms in reservation modal
+        // Populate room dropdown in reservation modal
         resRoom.innerHTML = "";
         rooms.forEach((room) => {
           const opt = document.createElement("option");
@@ -242,9 +225,7 @@
         });
       }
 
-      // ------------------------------
-      // Render Calendar
-      // ------------------------------
+      // --- Render Calendar ---
       function renderCalendar() {
         calendarEl.innerHTML = "";
         const lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
@@ -265,11 +246,9 @@
             const cell = document.createElement("div");
             cell.className = "cell";
             cell.id = `res-${room.id}-${dateStr}`;
-
             const resContainer = document.createElement("div");
             resContainer.className = "reservations";
             cell.appendChild(resContainer);
-
             calendarEl.appendChild(cell);
           }
         });
@@ -284,17 +263,13 @@
         return div;
       }
 
-      // ------------------------------
-      // Update Reservation Display
-      // ------------------------------
+      // --- Update Reservations Display ---
       function updateReservationsDisplay() {
-        document.querySelectorAll(".reservations").forEach((el) => (el.innerHTML = ""));
-
+        document.querySelectorAll(".reservations").forEach(el => el.innerHTML = "");
         reservations.forEach((r, index) => {
           const startDate = new Date(r.dates[0]);
           const finalDate = new Date(r.dates[1]);
           let current = new Date(startDate);
-
           while (current <= finalDate) {
             const dateStr = current.toISOString().split("T")[0];
             const cellId = `res-${r.room}-${dateStr}`;
@@ -304,16 +279,12 @@
               if (resContainer) {
                 const wrapper = document.createElement("div");
                 wrapper.className = "reservation-wrapper";
-
                 const resBox = document.createElement("div");
                 resBox.className = "reservation-box";
                 resBox.textContent = `${r.name} ($${r.price})`;
                 resBox.style.backgroundColor = r.color;
-                // Make last day half-width
                 resBox.style.width = (current.getTime() === finalDate.getTime()) ? "50%" : "100%";
-
-                // Tooltip content
-                const tooltipContent = 
+                const tooltipContent =
                   `Name: ${r.name}
 Room: ${getRoomNameById(r.room)}
 Dates: ${r.dates.join(" to ")}
@@ -321,7 +292,6 @@ Price: $${r.price}
 Phone: ${r.phone}
 Email: ${r.email}
 Source: ${r.source}${r.additional ? "\nAdditional: " + r.additional : ""}`;
-
                 resBox.title = tooltipContent;
                 resBox.addEventListener("click", () => openEditModal(index));
                 resBox.addEventListener("mouseover", (e) => {
@@ -330,20 +300,14 @@ Source: ${r.source}${r.additional ? "\nAdditional: " + r.additional : ""}`;
                   tooltip.style.top = e.pageY + "px";
                   tooltip.style.display = "block";
                 });
-                resBox.addEventListener("mouseout", () => {
-                  tooltip.style.display = "none";
-                });
-
+                resBox.addEventListener("mouseout", () => { tooltip.style.display = "none"; });
                 wrapper.appendChild(resBox);
-
-                // Show "!" marker if there's additional info
                 if (r.additional) {
                   const additionalMarker = document.createElement("div");
                   additionalMarker.className = "additional-marker";
                   additionalMarker.textContent = "!";
                   wrapper.appendChild(additionalMarker);
                 }
-
                 resContainer.appendChild(wrapper);
               }
             }
@@ -353,13 +317,11 @@ Source: ${r.source}${r.additional ? "\nAdditional: " + r.additional : ""}`;
       }
 
       function getRoomNameById(roomId) {
-        const room = rooms.find((r) => r.id == roomId);
+        const room = rooms.find(r => r.id == roomId);
         return room ? room.name : "Unknown";
       }
 
-      // ------------------------------
-      // Open / Close Reservation Modal
-      // ------------------------------
+      // --- Reservation Modal Functions ---
       function openModal() {
         editingReservationIndex = null;
         reservationModalTitle.textContent = "Add Reservation";
@@ -375,7 +337,6 @@ Source: ${r.source}${r.additional ? "\nAdditional: " + r.additional : ""}`;
         resGuestNumber.value = "";
         guestFieldsContainer.innerHTML = "";
         initFlatpickr([], "");
-
         modal.style.display = "block";
         overlay.style.display = "block";
       }
@@ -393,8 +354,6 @@ Source: ${r.source}${r.additional ? "\nAdditional: " + r.additional : ""}`;
         resSource.value = r.source || "Booking";
         resAdditional.value = r.additional || "";
         resRoom.value = r.room;
-
-        // Guest fields
         const guestCount = r.guests ? r.guests.length : 0;
         resGuestNumber.value = guestCount;
         createGuestFields(guestCount);
@@ -405,9 +364,7 @@ Source: ${r.source}${r.additional ? "\nAdditional: " + r.additional : ""}`;
             document.getElementById(`guest${i+1}Personal`).value = guest.personalNum || "";
           });
         }
-
         initFlatpickr(getDisabledDatesForRoom(r.room), resDates.value);
-
         modal.style.display = "block";
         overlay.style.display = "block";
       }
@@ -416,17 +373,13 @@ Source: ${r.source}${r.additional ? "\nAdditional: " + r.additional : ""}`;
         modal.style.display = "none";
         overlay.style.display = "none";
       }
-
       cancelBtn.addEventListener("click", closeModal);
 
-      // ------------------------------
-      // Dynamic Guest Fields
-      // ------------------------------
+      // --- Dynamic Guest Fields ---
       resGuestNumber.addEventListener("change", (e) => {
         const count = parseInt(e.target.value) || 0;
         createGuestFields(count);
       });
-
       function createGuestFields(count) {
         guestFieldsContainer.innerHTML = "";
         for (let i = 1; i <= count; i++) {
@@ -442,9 +395,7 @@ Source: ${r.source}${r.additional ? "\nAdditional: " + r.additional : ""}`;
         }
       }
 
-      // ------------------------------
-      // Flatpickr Initialization
-      // ------------------------------
+      // --- Flatpickr Initialization ---
       function initFlatpickr(disabledDates = [], initialValue = "") {
         if (flatpickrInstance) flatpickrInstance.destroy();
         flatpickrInstance = flatpickr(resDates, {
@@ -456,9 +407,8 @@ Source: ${r.source}${r.additional ? "\nAdditional: " + r.additional : ""}`;
       }
 
       function getDisabledDatesForRoom(roomId) {
-        // Mark existing reservation dates for this room as disabled
         const disabled = new Set();
-        reservations.forEach((r) => {
+        reservations.forEach(r => {
           if (parseInt(r.room) === parseInt(roomId)) {
             let current = new Date(r.dates[0]);
             const end = new Date(r.dates[1]);
@@ -472,9 +422,7 @@ Source: ${r.source}${r.additional ? "\nAdditional: " + r.additional : ""}`;
         return Array.from(disabled);
       }
 
-      // ------------------------------
-      // Validate & Save Reservation
-      // ------------------------------
+      // --- Validate and Save Reservation ---
       function validateReservation(newRes, editingIndex) {
         const newStart = new Date(newRes.dates[0]);
         const newEnd = new Date(newRes.dates[1]);
@@ -482,14 +430,12 @@ Source: ${r.source}${r.additional ? "\nAdditional: " + r.additional : ""}`;
           alert("End date must be after start date.");
           return false;
         }
-        // Check for overlap
         for (let i = 0; i < reservations.length; i++) {
           if (editingIndex !== null && i === editingIndex) continue;
           const r = reservations[i];
           if (r.room == newRes.room) {
             const existingStart = new Date(r.dates[0]);
             const existingEnd = new Date(r.dates[1]);
-            // Overlap check
             if (newStart < existingEnd && newEnd > existingStart) {
               if (!(newStart.getTime() === existingEnd.getTime() ||
                     newEnd.getTime() === existingStart.getTime())) {
@@ -519,7 +465,6 @@ Source: ${r.source}${r.additional ? "\nAdditional: " + r.additional : ""}`;
           return;
         }
 
-        // Gather guest data
         const guestCount = parseInt(resGuestNumber.value) || 0;
         const guestsArray = [];
         let atLeastOneComplete = false;
@@ -555,29 +500,21 @@ Source: ${r.source}${r.additional ? "\nAdditional: " + r.additional : ""}`;
           return;
         }
 
-        // Save or Update
         if (editingReservationIndex !== null) {
           reservations[editingReservationIndex] = {
             ...reservations[editingReservationIndex],
             ...newReservation
           };
         } else {
-          reservations.push({
-            ...newReservation,
-            id: reservationIdCounter++
-          });
+          reservations.push({ ...newReservation, id: reservationIdCounter++ });
         }
 
-        // Persist to localStorage
-        localStorage.setItem("reservations", JSON.stringify(reservations));
-
+        localStorage.setItem("reservationsCalendarCopy", JSON.stringify(reservations));
         closeModal();
         renderCalendar();
       });
 
-      // ------------------------------
-      // Manage Rooms Modal
-      // ------------------------------
+      // --- Manage Rooms Modal ---
       function openRoomsModal() {
         roomsList.innerHTML = "";
         rooms.forEach((room, index) => {
@@ -590,36 +527,31 @@ Source: ${r.source}${r.additional ? "\nAdditional: " + r.additional : ""}`;
           input.dataset.roomId = room.id;
           div.appendChild(input);
 
-          // Up Button
           const upBtn = document.createElement("button");
           upBtn.textContent = "Up";
           upBtn.addEventListener("click", () => {
             if (index > 0) {
               [rooms[index - 1], rooms[index]] = [rooms[index], rooms[index - 1]];
-              openRoomsModal(); // re-render
+              openRoomsModal();
             }
           });
           div.appendChild(upBtn);
 
-          // Down Button
           const downBtn = document.createElement("button");
           downBtn.textContent = "Down";
           downBtn.addEventListener("click", () => {
             if (index < rooms.length - 1) {
               [rooms[index + 1], rooms[index]] = [rooms[index], rooms[index + 1]];
-              openRoomsModal(); // re-render
+              openRoomsModal();
             }
           });
           div.appendChild(downBtn);
 
-          // Delete Button
           const delBtn = document.createElement("button");
           delBtn.textContent = "Delete";
           delBtn.addEventListener("click", () => {
             if (confirm("Delete this room?")) {
-              // Remove from array
               const removed = rooms.splice(index, 1);
-              // Remove any reservations that used this room
               reservations = reservations.filter(r => r.room != removed[0].id);
               openRoomsModal();
               renderCalendar();
@@ -638,7 +570,6 @@ Source: ${r.source}${r.additional ? "\nAdditional: " + r.additional : ""}`;
       addRoomBtn.addEventListener("click", () => {
         const newRoomName = prompt("Enter new room name:", "New Room");
         if (newRoomName) {
-          // Generate a new unique ID
           const maxId = rooms.length > 0 ? Math.max(...rooms.map(r => r.id)) : 0;
           const newId = maxId + 1;
           rooms.push({ id: newId, name: newRoomName });
@@ -647,18 +578,13 @@ Source: ${r.source}${r.additional ? "\nAdditional: " + r.additional : ""}`;
       });
 
       saveRoomsBtn.addEventListener("click", () => {
-        // Save updated names
         const inputs = roomsList.querySelectorAll("input");
-        inputs.forEach((input) => {
+        inputs.forEach(input => {
           const room = rooms.find(r => r.id == input.dataset.roomId);
-          if (room) {
-            room.name = input.value;
-          }
+          if (room) { room.name = input.value; }
         });
-        // Persist rooms and reservations
-        localStorage.setItem("rooms", JSON.stringify(rooms));
-        localStorage.setItem("reservations", JSON.stringify(reservations));
-
+        localStorage.setItem("roomsCalendarCopy", JSON.stringify(rooms));
+        localStorage.setItem("reservationsCalendarCopy", JSON.stringify(reservations));
         roomsModal.style.display = "none";
         overlay.style.display = "none";
         populateSelectors();
@@ -670,44 +596,28 @@ Source: ${r.source}${r.additional ? "\nAdditional: " + r.additional : ""}`;
         overlay.style.display = "none";
       });
 
-      // ------------------------------
-      // Overlay click closes modals
-      // ------------------------------
       overlay.addEventListener("click", () => {
         closeModal();
         roomsModal.style.display = "none";
+        menuEditModal.style.display = "none";
         overlay.style.display = "none";
       });
 
-      // ------------------------------
-      // Guest Info button
-      // ------------------------------
+      // --- Guest Info Button ---
       guestInfoBtn.addEventListener("click", () => {
-        // Save reservations (just in case)
-        localStorage.setItem("reservations", JSON.stringify(reservations));
-        window.location.href = "GuestInfo.html";
+        localStorage.setItem("reservationsCalendarCopy", JSON.stringify(reservations));
+        window.location.href = "GuestInfoCopy.html";
       });
 
-      // ------------------------------
-      // Month/Year Change
-      // ------------------------------
-      monthSelect.onchange = () => {
-        currentMonth = parseInt(monthSelect.value);
-        renderCalendar();
-      };
-      yearSelect.onchange = () => {
-        currentYear = parseInt(yearSelect.value);
-        renderCalendar();
-      };
+      // --- Month/Year Change ---
+      monthSelect.onchange = () => { currentMonth = parseInt(monthSelect.value); renderCalendar(); };
+      yearSelect.onchange = () => { currentYear = parseInt(yearSelect.value); renderCalendar(); };
 
-      // ------------------------------
-      // Initialize
-      // ------------------------------
+      // --- Initialize ---
       populateSelectors();
       renderCalendar();
-
       addBtn.addEventListener("click", openModal);
-      console.log("Booking page initialization complete.");
+      console.log("Calendar Copy with Menu initialization complete.");
     })();
   </script>
 </body>
